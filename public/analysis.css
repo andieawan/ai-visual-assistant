@@ -20,30 +20,38 @@
 /* Panel OBS Monitor mengambil porsi terbesar layar. */
 .layout {
   grid-template-columns: minmax(0, 3.5fr) minmax(280px, 1fr);
-  align-items: start;
+  align-items: stretch;
 }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
 .obs-panel { gap: 10px; }
-/* Kedua panel utama punya tinggi sendiri, jadi scroll hasil analisis tidak ikut menggeser monitor. */
-.obs-panel,
-.ai-panel {
-  max-height: calc(100vh - 110px);
-  overflow-y: auto;
-}
-.obs-panel {
-  position: sticky;
-  top: 16px;
-}
+/* Preview mengikuti lebar panel (rasio 16:9), tanpa batas tinggi, supaya monitor sebesar mungkin.
+   Tinggi panel Analisis mengikuti panel OBS (stretch), lalu hanya area jawaban AI yang di-scroll. */
 .obs-panel .preview {
-  max-height: calc(100vh - 330px);
-  min-height: 240px;
+  max-height: none;
 }
+
+.ai-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+.ai-panel .result {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.ai-panel .result-text {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.ai-panel .empty { flex: 0 0 auto; }
+
 @media (max-width: 900px) {
-  .obs-panel,
-  .ai-panel { max-height: none; overflow: visible; }
-  .obs-panel { position: static; }
-  .obs-panel .preview { max-height: none; }
+  .ai-panel { overflow: visible; }
+  .ai-panel .result,
+  .ai-panel .result-text { overflow: visible; flex: 0 0 auto; }
 }
 .obs-actions { margin-top: 2px; }
 
