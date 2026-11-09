@@ -19,13 +19,13 @@
 
 /* Panel OBS Monitor mengambil porsi terbesar layar. */
 .layout {
-  grid-template-columns: minmax(0, 2.4fr) minmax(300px, 1fr);
+  grid-template-columns: minmax(0, 3.5fr) minmax(280px, 1fr);
   align-items: start;
 }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
 .obs-panel { gap: 10px; }
-.obs-panel .preview { max-height: 72vh; }
+.obs-panel .preview { max-height: 82vh; }
 .obs-actions { margin-top: 2px; }
 
 .obs-info summary,
