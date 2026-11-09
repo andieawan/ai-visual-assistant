@@ -8,9 +8,7 @@
 
 /* Judul dan tombol Pengaturan ada di bawah halaman, menempel di dasar layar. */
 .topbar {
-  position: sticky;
-  bottom: 0;
-  z-index: 20;
+  position: static;
   background: var(--bg);
   border-top: 1px solid var(--border);
   border-bottom: 0;
@@ -28,6 +26,8 @@
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; height: auto; }
   .obs-panel { overflow: visible; }
+  /* Satu kolom: panel Analisis harus mengikuti tinggi isinya, jadi containment dimatikan. */
+  .ai-panel { contain: none; overflow: visible; }
 }
 
 .obs-panel { gap: 10px; }
