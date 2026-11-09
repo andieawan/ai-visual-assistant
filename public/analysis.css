@@ -6,7 +6,15 @@
 
 /* ---------- Layout utama ---------- */
 
-.topbar { position: sticky; top: 0; z-index: 20; background: var(--bg); }
+/* Judul dan tombol Pengaturan ada di bawah halaman, menempel di dasar layar. */
+.topbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+}
 .topbar-end { margin-left: auto; }
 
 /* Panel OBS Monitor mengambil porsi terbesar layar. */
