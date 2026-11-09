@@ -22,20 +22,6 @@
         <span id="obsBadge" class="badge badge-off">Disconnected</span>
       </div>
 
-      <div class="field-row">
-        <label>Sumber preview
-          <select id="previewMode">
-            <option value="live">Live (OBS Virtual Camera)</option>
-            <option value="snapshot">Snapshot manual</option>
-          </select>
-        </label>
-        <label>Kamera
-          <select id="videoDevice">
-            <option value="">(pilih kamera)</option>
-          </select>
-        </label>
-      </div>
-
       <div class="preview" id="preview">
         <img id="previewImg" alt="Preview tampilan komputer 1" hidden>
         <video id="liveVideo" muted playsinline hidden></video>
@@ -62,6 +48,20 @@
 
       <div id="warnBox" class="alert alert-warn" hidden></div>
       <div id="obsError" class="alert alert-error" hidden></div>
+
+      <div class="field-row source-row">
+        <label>Sumber preview
+          <select id="previewMode">
+            <option value="live">Live (OBS Virtual Camera)</option>
+            <option value="snapshot">Snapshot manual</option>
+          </select>
+        </label>
+        <label>Kamera
+          <select id="videoDevice">
+            <option value="">(pilih kamera)</option>
+          </select>
+        </label>
+      </div>
     </section>
 
     <!-- PANEL SAMPING: ANALISIS AI -->
