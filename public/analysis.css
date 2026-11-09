@@ -18,11 +18,17 @@
 .topbar-end { margin-left: auto; }
 
 /* Panel OBS Monitor mengambil porsi terbesar layar. */
+/* Area utama dikunci sebesar layar (dikurangi topbar bawah), jadi panel tidak melebihi layar. */
 .layout {
   grid-template-columns: minmax(0, 3.5fr) minmax(280px, 1fr);
   align-items: stretch;
+  height: calc(100vh - 96px);
 }
-@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.obs-panel { overflow-y: auto; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; height: auto; }
+  .obs-panel { overflow: visible; }
+}
 
 .obs-panel { gap: 10px; }
 /* Preview mengikuti lebar panel (rasio 16:9), tanpa batas tinggi, supaya monitor sebesar mungkin.
@@ -265,7 +271,7 @@ body.monitor-mode .topbar,
 body.monitor-mode .layout > section:not(#obsPanel) {
   display: none;
 }
-body.monitor-mode .layout { padding: 0; margin: 0; display: block; }
+body.monitor-mode .layout { padding: 0; margin: 0; display: block; height: auto; }
 body.monitor-mode #obsPanel {
   position: fixed;
   inset: 0;
