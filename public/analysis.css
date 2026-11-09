@@ -18,13 +18,13 @@
 .topbar-end { margin-left: auto; }
 
 /* Panel OBS Monitor mengambil porsi terbesar layar. */
-/* Area utama dikunci sebesar layar (dikurangi topbar bawah), jadi panel tidak melebihi layar. */
+/* Tinggi baris ditentukan panel OBS (preview 16:9 tetap). Panel Analisis mengikuti tinggi itu,
+   dan isinya (hasil AI) tidak ikut memperbesar baris, sehingga hanya area jawaban yang di-scroll. */
 .layout {
   grid-template-columns: minmax(0, 3.5fr) minmax(280px, 1fr);
   align-items: stretch;
-  height: calc(100vh - 96px);
 }
-.obs-panel { overflow-y: auto; }
+.obs-panel { overflow: visible; }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; height: auto; }
   .obs-panel { overflow: visible; }
@@ -35,11 +35,14 @@
    Tinggi panel Analisis mengikuti panel OBS (stretch), lalu hanya area jawaban AI yang di-scroll. */
 .obs-panel .preview {
   max-height: none;
+  height: auto;
+  aspect-ratio: 16 / 9;
 }
 
 .ai-panel {
   min-height: 0;
   overflow: hidden;
+  contain: size;
 }
 .ai-panel .result {
   flex: 1 1 auto;
