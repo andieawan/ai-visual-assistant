@@ -25,7 +25,26 @@
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
 .obs-panel { gap: 10px; }
-.obs-panel .preview { max-height: 82vh; }
+/* Kedua panel utama punya tinggi sendiri, jadi scroll hasil analisis tidak ikut menggeser monitor. */
+.obs-panel,
+.ai-panel {
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+}
+.obs-panel {
+  position: sticky;
+  top: 16px;
+}
+.obs-panel .preview {
+  max-height: calc(100vh - 330px);
+  min-height: 240px;
+}
+@media (max-width: 900px) {
+  .obs-panel,
+  .ai-panel { max-height: none; overflow: visible; }
+  .obs-panel { position: static; }
+  .obs-panel .preview { max-height: none; }
+}
 .obs-actions { margin-top: 2px; }
 
 .obs-info summary,
@@ -242,6 +261,8 @@ body.monitor-mode .layout { padding: 0; margin: 0; display: block; }
 body.monitor-mode #obsPanel {
   position: fixed;
   inset: 0;
+  max-height: none;
+  overflow: hidden;
   z-index: 50;
   padding: 0;
   gap: 0;
