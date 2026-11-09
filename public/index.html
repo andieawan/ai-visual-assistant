@@ -11,11 +11,12 @@
   <header class="topbar">
     <h1>AI Visual Assistant</h1>
     <span class="stage">Tahap 4 · Tampilan &amp; Monitor</span>
+    <button id="btnSettings" class="btn btn-ghost btn-sm topbar-end">Pengaturan</button>
   </header>
 
   <main class="layout">
-    <!-- PANEL KIRI: OBS MONITOR -->
-    <section class="panel" id="obsPanel">
+    <!-- PANEL UTAMA: OBS MONITOR (diperbesar) -->
+    <section class="panel obs-panel" id="obsPanel">
       <div class="panel-head">
         <h2>OBS Monitor</h2>
         <span id="obsBadge" class="badge badge-off">Disconnected</span>
@@ -42,33 +43,45 @@
         <p id="previewEmpty" class="muted">Belum ada preview. Pilih sumber Live atau klik "Refresh Preview".</p>
       </div>
 
-      <dl class="info">
-        <dt>Source</dt><dd id="infoSource">-</dd>
-        <dt>Resolusi</dt><dd id="infoRes">-</dd>
-        <dt>Ukuran file</dt><dd id="infoSize">-</dd>
-        <dt>Diambil</dt><dd id="infoTime">-</dd>
-        <dt>OBS</dt><dd id="infoObs">-</dd>
-      </dl>
-
-      <div id="warnBox" class="alert alert-warn" hidden></div>
-      <div id="obsError" class="alert alert-error" hidden></div>
-
-      <div class="row">
+      <div class="row obs-actions">
         <button id="btnRefresh" class="btn">Refresh Preview</button>
         <button id="btnMonitor" class="btn btn-primary">Mode Monitor</button>
         <button id="btnTest" class="btn btn-ghost">Test Connection</button>
       </div>
+
+      <details class="obs-info">
+        <summary>Info tangkapan &amp; koneksi</summary>
+        <dl class="info">
+          <dt>Source</dt><dd id="infoSource">-</dd>
+          <dt>Resolusi</dt><dd id="infoRes">-</dd>
+          <dt>Ukuran file</dt><dd id="infoSize">-</dd>
+          <dt>Diambil</dt><dd id="infoTime">-</dd>
+          <dt>OBS</dt><dd id="infoObs">-</dd>
+        </dl>
+      </details>
+
+      <div id="warnBox" class="alert alert-warn" hidden></div>
+      <div id="obsError" class="alert alert-error" hidden></div>
     </section>
 
-    <!-- PANEL TENGAH: AI ANALYSIS -->
-    <section class="panel">
+    <!-- PANEL SAMPING: ANALISIS AI -->
+    <section class="panel ai-panel">
       <div class="panel-head">
         <h2>AI Analysis</h2>
         <span id="providerChip" class="chip">-</span>
       </div>
 
       <button id="btnAnalyze" class="btn btn-primary btn-big">ANALISIS TAMPILAN</button>
-      <p class="muted hint">Ctrl + Enter di kolom instruksi juga menjalankan analisis.</p>
+
+      <!-- Instruksi dibuat menu lipat kecil agar tidak memakan layar -->
+      <details class="instr-menu">
+        <summary>Instruksi tambahan (opsional)</summary>
+        <div class="field">
+          <textarea id="instruction" rows="3" maxlength="2000" placeholder="Contoh: Jelaskan fungsi menu yang sedang terbuka."></textarea>
+          <span id="instructionCount" class="muted small">0 / 2000</span>
+          <p class="muted hint">Ctrl + Enter di kolom instruksi juga menjalankan analisis.</p>
+        </div>
+      </details>
 
       <div id="analyzeProgress" class="progress" hidden>
         <span class="spinner" aria-hidden="true"></span>
@@ -80,7 +93,7 @@
 
       <div id="resultEmpty" class="empty">
         <p>Belum ada hasil analisis.</p>
-        <p class="muted">Tulis instruksi di panel kanan (opsional), lalu klik ANALISIS TAMPILAN.</p>
+        <p class="muted">Klik ANALISIS TAMPILAN untuk menganalisis layar saat ini.</p>
       </div>
 
       <div id="resultBox" class="result" hidden>
@@ -91,114 +104,113 @@
         <div id="resultText" class="result-text"></div>
       </div>
     </section>
-
-    <!-- PANEL KANAN: INSTRUKSI & PENGATURAN -->
-    <section class="panel panel-scroll">
-      <div class="panel-head"><h2>Instruksi</h2></div>
-      <div class="field">
-        <textarea id="instruction" rows="4" maxlength="2000" placeholder="Contoh: Jelaskan fungsi menu yang sedang terbuka."></textarea>
-        <span id="instructionCount" class="muted small">0 / 2000</span>
-      </div>
-
-      <div class="panel-head"><h2>Pengaturan</h2></div>
-
-      <form id="settingsForm" autocomplete="off">
-        <fieldset>
-          <legend>Koneksi OBS WebSocket</legend>
-          <label>Alamat IP
-            <input id="obsHost" type="text" maxlength="64" required>
-          </label>
-          <label>Port
-            <input id="obsPort" type="number" min="1" max="65535" required>
-          </label>
-          <label>Password
-            <input id="obsPassword" type="password" maxlength="128" placeholder="(tidak diubah)">
-          </label>
-          <label class="check">
-            <input id="obsClearPw" type="checkbox"> Kosongkan password
-          </label>
-        </fieldset>
-
-        <fieldset>
-          <legend>Source capture card</legend>
-          <label>Source
-            <select id="obsSource">
-              <option value="">Otomatis (capture card pertama)</option>
-            </select>
-          </label>
-          <button type="button" id="btnLoadInputs" class="btn btn-ghost btn-sm">Muat daftar source</button>
-        </fieldset>
-
-        <fieldset>
-          <legend>Kualitas screenshot</legend>
-          <label>Lebar gambar
-            <select id="capWidth">
-              <option value="640">640 px (paling hemat)</option>
-              <option value="960">960 px</option>
-              <option value="1280">1280 px (disarankan)</option>
-              <option value="1920">1920 px</option>
-              <option value="0">Resolusi asli</option>
-            </select>
-          </label>
-          <label>Format
-            <select id="capFormat">
-              <option value="jpg">JPG (lebih kecil)</option>
-              <option value="png">PNG (lebih tajam)</option>
-            </select>
-          </label>
-          <label>Kualitas JPG: <span id="capQualityVal">75</span>
-            <input id="capQuality" type="range" min="30" max="100" step="5">
-          </label>
-        </fieldset>
-
-        <button type="submit" class="btn btn-primary">Simpan Pengaturan</button>
-        <div id="settingsMsg" class="alert" hidden></div>
-      </form>
-
-      <form id="aiForm" autocomplete="off">
-        <fieldset>
-          <legend>Pengaturan AI</legend>
-
-          <div class="ai-status">
-            <div id="geminiStatus" class="status-line">Gemini: memuat...</div>
-            <div id="claudeStatus" class="status-line">Claude CLI: memuat...</div>
-            <button type="button" id="btnCheckAi" class="btn btn-ghost btn-sm">Cek AI</button>
-          </div>
-
-          <label>Penyedia utama
-            <select id="aiProvider">
-              <option value="gemini">Gemini API</option>
-              <option value="claude">Claude CLI (langganan Pro)</option>
-            </select>
-          </label>
-          <label class="check">
-            <input id="aiFallback" type="checkbox"> Pindah otomatis ke penyedia lain jika kuota habis
-          </label>
-          <label>Model Gemini
-            <input id="geminiModel" type="text" maxlength="64" placeholder="gemini-2.5-flash" list="geminiModels">
-            <datalist id="geminiModels"></datalist>
-          </label>
-          <div class="row">
-            <button type="button" id="btnLoadModels" class="btn btn-ghost btn-sm">Muat daftar model</button>
-            <span id="modelsInfo" class="muted small"></span>
-          </div>
-          <label>Model Claude (kosongkan untuk default)
-            <input id="claudeModel" type="text" maxlength="64" placeholder="contoh: sonnet">
-          </label>
-          <label>Perintah Claude
-            <input id="claudeCommand" type="text" maxlength="260" placeholder="claude">
-          </label>
-        </fieldset>
-        <button type="submit" class="btn btn-primary">Simpan Pengaturan AI</button>
-        <div id="aiMsg" class="alert" hidden></div>
-      </form>
-    </section>
   </main>
+
+  <!-- LACI PENGATURAN: dibuka dari tombol Pengaturan di topbar -->
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+  <aside id="drawer" class="drawer" hidden aria-label="Pengaturan">
+    <div class="drawer-head">
+      <h2>Pengaturan</h2>
+      <button id="btnCloseDrawer" class="btn btn-ghost btn-sm" type="button">Tutup</button>
+    </div>
+
+    <form id="settingsForm" autocomplete="off">
+      <fieldset>
+        <legend>Koneksi OBS WebSocket</legend>
+        <label>Alamat IP
+          <input id="obsHost" type="text" maxlength="64" required>
+        </label>
+        <label>Port
+          <input id="obsPort" type="number" min="1" max="65535" required>
+        </label>
+        <label>Password
+          <input id="obsPassword" type="password" maxlength="128" placeholder="(tidak diubah)">
+        </label>
+        <label class="check">
+          <input id="obsClearPw" type="checkbox"> Kosongkan password
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Source capture card</legend>
+        <label>Source
+          <select id="obsSource">
+            <option value="">Otomatis (capture card pertama)</option>
+          </select>
+        </label>
+        <button type="button" id="btnLoadInputs" class="btn btn-ghost btn-sm">Muat daftar source</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Kualitas screenshot</legend>
+        <label>Lebar gambar
+          <select id="capWidth">
+            <option value="640">640 px (paling hemat)</option>
+            <option value="960">960 px</option>
+            <option value="1280">1280 px (disarankan)</option>
+            <option value="1920">1920 px</option>
+            <option value="0">Resolusi asli</option>
+          </select>
+        </label>
+        <label>Format
+          <select id="capFormat">
+            <option value="jpg">JPG (lebih kecil)</option>
+            <option value="png">PNG (lebih tajam)</option>
+          </select>
+        </label>
+        <label>Kualitas JPG: <span id="capQualityVal">75</span>
+          <input id="capQuality" type="range" min="30" max="100" step="5">
+        </label>
+      </fieldset>
+
+      <button type="submit" class="btn btn-primary">Simpan Pengaturan</button>
+      <div id="settingsMsg" class="alert" hidden></div>
+    </form>
+
+    <form id="aiForm" autocomplete="off">
+      <fieldset>
+        <legend>Pengaturan AI</legend>
+
+        <div class="ai-status">
+          <div id="geminiStatus" class="status-line">Gemini: memuat...</div>
+          <div id="claudeStatus" class="status-line">Claude CLI: memuat...</div>
+          <button type="button" id="btnCheckAi" class="btn btn-ghost btn-sm">Cek AI</button>
+        </div>
+
+        <label>Penyedia utama
+          <select id="aiProvider">
+            <option value="gemini">Gemini API</option>
+            <option value="claude">Claude CLI (langganan Pro)</option>
+          </select>
+        </label>
+        <label class="check">
+          <input id="aiFallback" type="checkbox"> Pindah otomatis ke penyedia lain jika kuota habis
+        </label>
+        <label>Model Gemini
+          <input id="geminiModel" type="text" maxlength="64" placeholder="gemini-2.5-flash" list="geminiModels">
+          <datalist id="geminiModels"></datalist>
+        </label>
+        <div class="row">
+          <button type="button" id="btnLoadModels" class="btn btn-ghost btn-sm">Muat daftar model</button>
+          <span id="modelsInfo" class="muted small"></span>
+        </div>
+        <label>Model Claude (kosongkan untuk default)
+          <input id="claudeModel" type="text" maxlength="64" placeholder="contoh: sonnet">
+        </label>
+        <label>Perintah Claude
+          <input id="claudeCommand" type="text" maxlength="260" placeholder="claude">
+        </label>
+      </fieldset>
+      <button type="submit" class="btn btn-primary">Simpan Pengaturan AI</button>
+      <div id="aiMsg" class="alert" hidden></div>
+    </form>
+  </aside>
 
   <button id="btnExitMonitor" class="btn exit-monitor">Keluar Mode Monitor (Esc)</button>
 
   <script src="app.js"></script>
   <script src="preview.js"></script>
   <script src="ai.js"></script>
+  <script src="ui.js"></script>
 </body>
 </html>
