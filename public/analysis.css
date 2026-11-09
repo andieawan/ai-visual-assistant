@@ -58,7 +58,7 @@
 .ai-panel .empty { flex: 0 0 auto; }
 
 @media (max-width: 900px) {
-  .ai-panel { overflow: visible; }
+  .ai-panel { overflow: visible; contain: none; }
   .ai-panel .result,
   .ai-panel .result-text { overflow: visible; flex: 0 0 auto; }
 }
