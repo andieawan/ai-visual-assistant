@@ -100,7 +100,7 @@ async function loadAiSettings() {
   const s = await api('/api/settings');
   $('aiProvider').value = s.ai.provider;
   $('aiFallback').checked = s.ai.fallback;
-  $('geminiModel').value = s.ai.geminiModel;
+  setGeminiOption(s.ai.geminiModel);
   $('claudeModel').value = s.ai.claudeModel;
   $('claudeCommand').value = s.ai.claudeCommand;
   $('providerChip').textContent = LABELS[s.ai.provider];
@@ -128,6 +128,18 @@ async function saveAiSettings(e) {
 }
 
 // ---------- Daftar model Gemini ----------
+// Pastikan model yang tersimpan ada di dropdown, lalu pilih model itu.
+function setGeminiOption(id) {
+  const select = $('geminiModel');
+  if (id && ![...select.options].some((o) => o.value === id)) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id;
+    select.insertBefore(opt, select.firstChild);
+  }
+  if (id) select.value = id;
+}
+
 async function loadModels() {
   const btn = $('btnLoadModels');
   btn.disabled = true;
@@ -135,15 +147,17 @@ async function loadModels() {
   $('modelsInfo').textContent = '';
   try {
     const { models } = await api('/api/ai/models');
-    const list = $('geminiModels');
-    list.innerHTML = '';
+    const select = $('geminiModel');
+    const current = select.value;
+    select.innerHTML = '';
     for (const m of models) {
       const opt = document.createElement('option');
       opt.value = m.id;
-      opt.label = m.displayName && m.displayName !== m.id ? `${m.id} (${m.displayName})` : m.id;
-      list.appendChild(opt);
+      opt.textContent = m.displayName && m.displayName !== m.id ? `${m.id} (${m.displayName})` : m.id;
+      select.appendChild(opt);
     }
-    $('modelsInfo').textContent = `${models.length} model tersedia. Pilih dari kolom Model Gemini.`;
+    setGeminiOption(current);
+    $('modelsInfo').textContent = `${models.length} model tersedia. Pilih dari daftar Model Gemini.`;
     $('modelsInfo').className = 'muted small';
   } catch (err) {
     $('modelsInfo').textContent = err.message;
