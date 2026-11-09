@@ -187,8 +187,9 @@
           <input id="aiFallback" type="checkbox"> Pindah otomatis ke penyedia lain jika kuota habis
         </label>
         <label>Model Gemini
-          <input id="geminiModel" type="text" maxlength="64" placeholder="gemini-2.5-flash" list="geminiModels">
-          <datalist id="geminiModels"></datalist>
+          <select id="geminiModel">
+            <option value="">(muat daftar model dulu)</option>
+          </select>
         </label>
         <div class="row">
           <button type="button" id="btnLoadModels" class="btn btn-ghost btn-sm">Muat daftar model</button>
