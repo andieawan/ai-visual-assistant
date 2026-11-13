@@ -15,6 +15,7 @@
     "@google/genai": "^3.0.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
-    "obs-websocket-js": "^5.0.6"
+    "obs-websocket-js": "^5.0.6",
+    "unpdf": "^1.9.1"
   }
 }

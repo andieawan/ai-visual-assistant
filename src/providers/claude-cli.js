@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../config.js';
 import { ProviderError } from './errors.js';
+import { extractText, getDocumentProxy } from 'unpdf';
 
 const TMP_DIR = path.join(DATA_DIR, 'tmp');
 const TIMEOUT_MS = 180000;
@@ -50,10 +51,39 @@ const RINGKASAN_DIR = path.join(DATA_DIR, 'ringkasan');
 const RINGKASAN_FILE = path.join(RINGKASAN_DIR, 'catatan-materi.md');
 const TANDA_FILE = path.join(RINGKASAN_DIR, 'tanda.txt');
 const RINGKASAN_TIMEOUT_MS = 600000;
+const TEKS_DIR = path.join(RINGKASAN_DIR, 'teks');
+const PDF_MIN_CHARS = 200;
+
+// Teks PDF diekstrak di backend, karena alat Read milik Claude CLI butuh poppler untuk membuka PDF.
+// Mengembalikan daftar file yang dibaca Claude: PDF diganti versi .txt, file lain apa adanya.
+async function siapkanTeks(materi) {
+  fs.rmSync(TEKS_DIR, { recursive: true, force: true });
+  fs.mkdirSync(TEKS_DIR, { recursive: true });
+  const hasil = [];
+  for (const f of materi) {
+    if (path.extname(f).toLowerCase() !== '.pdf') { hasil.push(f); continue; }
+    const nama = path.basename(f);
+    let text;
+    try {
+      const pdf = await getDocumentProxy(new Uint8Array(fs.readFileSync(f)));
+      ({ text } = await extractText(pdf, { mergePages: true }));
+    } catch (err) {
+      throw new ProviderError('error', `PDF "${nama}" tidak bisa dibuka: ${String(err.message).slice(0, 150)}`);
+    }
+    if (!text || text.trim().length < PDF_MIN_CHARS) {
+      throw new ProviderError('error',
+        `PDF "${nama}" hampir tidak berisi teks (kemungkinan hasil scan/foto). Ganti dengan PDF berteks, atau simpan halamannya sebagai gambar .jpg/.png.`);
+    }
+    const out = path.join(TEKS_DIR, nama + '.txt');
+    fs.writeFileSync(out, text, 'utf8');
+    hasil.push(out);
+  }
+  return hasil;
+}
 
 // Tanda unik isi folder materi (nama, ukuran, waktu ubah). Berubah = catatan dibuat ulang.
 function tandaMateri(files) {
-  return files.map((f) => {
+  return 'v2\n' + files.map((f) => {
     const st = fs.statSync(f);
     return `${path.basename(f)}|${st.size}|${Math.floor(st.mtimeMs)}`;
   }).join('\n');
@@ -103,9 +133,10 @@ async function siapkanRingkasan(settings, materi) {
     }
   } catch { /* belum ada catatan: buat baru */ }
 
+  const sumber = await siapkanTeks(materi);
   const prompt = [
     'Baca semua file materi berikut dengan alat Read:',
-    ...materi.map((f) => `- ${f}`),
+    ...sumber.map((f) => `- ${f}`),
     '',
     'Lalu tulis catatan belajar yang padat dalam Bahasa Indonesia, format Markdown.',
     'Pertahankan semua fakta penting: definisi, istilah, nama, angka, rumus, langkah, dan contoh kunci.',
@@ -113,7 +144,7 @@ async function siapkanRingkasan(settings, materi) {
     'Keluarkan hanya isi catatannya, tanpa kalimat pembuka atau penutup.'
   ].join('\n');
 
-  const { text } = await callClaude(settings, prompt, [MATERI_DIR], RINGKASAN_TIMEOUT_MS);
+  const { text } = await callClaude(settings, prompt, [MATERI_DIR, TEKS_DIR], RINGKASAN_TIMEOUT_MS);
   fs.mkdirSync(RINGKASAN_DIR, { recursive: true });
   fs.writeFileSync(RINGKASAN_FILE, text, 'utf8');
   fs.writeFileSync(TANDA_FILE, tanda, 'utf8');
