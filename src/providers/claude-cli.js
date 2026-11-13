@@ -8,6 +8,24 @@ import { ProviderError } from './errors.js';
 const TMP_DIR = path.join(DATA_DIR, 'tmp');
 const TIMEOUT_MS = 180000;
 
+// Materi rujukan: file yang ditaruh pengguna di data/materi dibaca Claude sebelum menjawab.
+const MATERI_DIR = path.join(DATA_DIR, 'materi');
+const MATERI_EXT = new Set(['.txt', '.md', '.pdf', '.png', '.jpg', '.jpeg']);
+const MATERI_MAX_FILES = 10;
+fs.mkdirSync(MATERI_DIR, { recursive: true });
+
+function listMateri() {
+  try {
+    return fs.readdirSync(MATERI_DIR, { withFileTypes: true })
+      .filter((d) => d.isFile() && MATERI_EXT.has(path.extname(d.name).toLowerCase()))
+      .map((d) => path.join(MATERI_DIR, d.name))
+      .sort()
+      .slice(0, MATERI_MAX_FILES);
+  } catch {
+    return [];
+  }
+}
+
 function run(command, args, timeoutMs) {
   return new Promise((resolve, reject) => {
     execFile(command, args, {
@@ -55,8 +73,20 @@ export async function analyze({ base64, ext, instruction, settings }) {
   fs.writeFileSync(file, Buffer.from(base64, 'base64'));
 
   try {
+    const materi = listMateri();
+    const materiLines = materi.length
+      ? [
+          '',
+          'Sebelum menjawab, baca juga file materi rujukan berikut dengan alat Read:',
+          ...materi.map((f) => `- ${f}`),
+          'Utamakan isi materi itu saat menjawab. Jika jawabannya tidak ada di materi, katakan itu,',
+          'lalu jawab dengan pengetahuan umum.'
+        ]
+      : [];
+
     const prompt = [
       `Baca file gambar berikut dengan alat Read: ${file}`,
+      ...materiLines,
       '',
       'Lalu jawab sesuai instruksi di bawah. Jawab dalam Bahasa Indonesia, ringkas,',
       'dan jangan mengarang isi layar yang tidak terlihat. Jika gambar hitam atau tidak jelas, katakan itu.',
@@ -66,6 +96,7 @@ export async function analyze({ base64, ext, instruction, settings }) {
 
     // --allowedTools ditaruh paling akhir karena flag itu menerima banyak nilai.
     const args = ['-p', prompt, '--output-format', 'json', '--add-dir', TMP_DIR];
+    if (materi.length) args.push('--add-dir', MATERI_DIR);
     if (settings.claudeModel) args.push('--model', settings.claudeModel);
     args.push('--allowedTools', 'Read');
 
