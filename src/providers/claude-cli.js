@@ -38,11 +38,86 @@ function run(command, args, timeoutMs) {
           `Perintah "${command}" tidak ditemukan. Pastikan Claude Code terpasang dan bisa dijalankan dari PowerShell.`));
       }
       if (err && err.killed) {
-        return reject(new ProviderError('error', 'Claude CLI melewati batas waktu 3 menit.'));
+        return reject(new ProviderError('error', `Claude CLI melewati batas waktu ${Math.round(timeoutMs / 60000)} menit.`));
       }
       resolve({ stdout: stdout || '', stderr: stderr || '', code: err ? err.code ?? 1 : 0 });
     });
   });
+}
+
+// Catatan ringkas materi: dibuat Claude satu kali, lalu dipakai ulang sampai isi folder materi berubah.
+const RINGKASAN_DIR = path.join(DATA_DIR, 'ringkasan');
+const RINGKASAN_FILE = path.join(RINGKASAN_DIR, 'catatan-materi.md');
+const TANDA_FILE = path.join(RINGKASAN_DIR, 'tanda.txt');
+const RINGKASAN_TIMEOUT_MS = 600000;
+
+// Tanda unik isi folder materi (nama, ukuran, waktu ubah). Berubah = catatan dibuat ulang.
+function tandaMateri(files) {
+  return files.map((f) => {
+    const st = fs.statSync(f);
+    return `${path.basename(f)}|${st.size}|${Math.floor(st.mtimeMs)}`;
+  }).join('\n');
+}
+
+// Pola pesan yang berarti kuota/saldo habis, sehingga aplikasi pindah ke penyedia lain.
+const QUOTA_PATTERN = /usage limit|rate limit|quota|limit reached|too many requests|credit balance|insufficient/i;
+
+// Menjalankan Claude CLI dan mengembalikan JSON hasilnya, dengan penanganan error yang seragam.
+async function callClaude(settings, prompt, dirs, timeoutMs) {
+  // --allowedTools ditaruh paling akhir karena flag itu menerima banyak nilai.
+  const args = ['-p', prompt, '--output-format', 'json'];
+  for (const d of dirs) args.push('--add-dir', d);
+  if (settings.claudeModel) args.push('--model', settings.claudeModel);
+  args.push('--allowedTools', 'Read');
+
+  const { stdout, stderr, code } = await run(settings.claudeCommand, args, timeoutMs);
+
+  let data;
+  try {
+    data = JSON.parse(stdout.trim());
+  } catch {
+    const detail = (stderr || stdout || 'tidak ada output').trim().slice(0, 300);
+    throw new ProviderError('error', 'Output Claude CLI tidak bisa dibaca: ' + detail);
+  }
+
+  if (data.is_error || data.subtype !== 'success' || code !== 0) {
+    const msg = String(data.result || stderr || 'Claude CLI gagal.').trim();
+    if (QUOTA_PATTERN.test(msg)) {
+      throw new ProviderError('quota', 'Batas pemakaian Claude (langganan Pro) sudah tercapai untuk saat ini.');
+    }
+    throw new ProviderError('error', 'Claude CLI gagal: ' + msg.slice(0, 300));
+  }
+
+  const text = String(data.result || '').trim();
+  if (!text) throw new ProviderError('error', 'Claude CLI tidak mengembalikan teks.');
+  return { data, text };
+}
+
+// Mengembalikan true jika catatan materi tersedia. Membuat catatan baru hanya jika materi berubah.
+async function siapkanRingkasan(settings, materi) {
+  if (!materi.length) return { ada: false, baru: false };
+  const tanda = tandaMateri(materi);
+  try {
+    if (fs.readFileSync(TANDA_FILE, 'utf8') === tanda && fs.statSync(RINGKASAN_FILE).size > 0) {
+      return { ada: true, baru: false };
+    }
+  } catch { /* belum ada catatan: buat baru */ }
+
+  const prompt = [
+    'Baca semua file materi berikut dengan alat Read:',
+    ...materi.map((f) => `- ${f}`),
+    '',
+    'Lalu tulis catatan belajar yang padat dalam Bahasa Indonesia, format Markdown.',
+    'Pertahankan semua fakta penting: definisi, istilah, nama, angka, rumus, langkah, dan contoh kunci.',
+    'Buang pengulangan dan basa-basi. Kelompokkan per topik dengan judul. Maksimal sekitar 2500 kata.',
+    'Keluarkan hanya isi catatannya, tanpa kalimat pembuka atau penutup.'
+  ].join('\n');
+
+  const { text } = await callClaude(settings, prompt, [MATERI_DIR], RINGKASAN_TIMEOUT_MS);
+  fs.mkdirSync(RINGKASAN_DIR, { recursive: true });
+  fs.writeFileSync(RINGKASAN_FILE, text, 'utf8');
+  fs.writeFileSync(TANDA_FILE, tanda, 'utf8');
+  return { ada: true, baru: true };
 }
 
 // Dipakai tombol "Cek AI" di dashboard. Hasilnya di-cache 60 detik.
@@ -64,22 +139,20 @@ export async function checkClaude(command) {
   return value;
 }
 
-// Pola pesan yang berarti kuota/saldo habis, sehingga aplikasi pindah ke penyedia lain.
-const QUOTA_PATTERN = /usage limit|rate limit|quota|limit reached|too many requests|credit balance|insufficient/i;
-
 export async function analyze({ base64, ext, instruction, settings }) {
+  const materi = listMateri();
+  const ringkasan = await siapkanRingkasan(settings, materi);
+
   fs.mkdirSync(TMP_DIR, { recursive: true });
   const file = path.join(TMP_DIR, `${crypto.randomUUID()}.${ext}`);
   fs.writeFileSync(file, Buffer.from(base64, 'base64'));
 
   try {
-    const materi = listMateri();
-    const materiLines = materi.length
+    const materiLines = ringkasan.ada
       ? [
           '',
-          'Sebelum menjawab, baca juga file materi rujukan berikut dengan alat Read:',
-          ...materi.map((f) => `- ${f}`),
-          'Utamakan isi materi itu saat menjawab. Jika jawabannya tidak ada di materi, katakan itu,',
+          `Sebelum menjawab, baca juga catatan materi rujukan ini dengan alat Read: ${RINGKASAN_FILE}`,
+          'Utamakan isi catatan itu saat menjawab. Jika jawabannya tidak ada di catatan, katakan itu,',
           'lalu jawab dengan pengetahuan umum.'
         ]
       : [];
@@ -94,34 +167,8 @@ export async function analyze({ base64, ext, instruction, settings }) {
       `Instruksi: ${instruction}`
     ].join('\n');
 
-    // --allowedTools ditaruh paling akhir karena flag itu menerima banyak nilai.
-    const args = ['-p', prompt, '--output-format', 'json', '--add-dir', TMP_DIR];
-    if (materi.length) args.push('--add-dir', MATERI_DIR);
-    if (settings.claudeModel) args.push('--model', settings.claudeModel);
-    args.push('--allowedTools', 'Read');
-
-    const { stdout, stderr, code } = await run(settings.claudeCommand, args, TIMEOUT_MS);
-
-    let data;
-    try {
-      data = JSON.parse(stdout.trim());
-    } catch {
-      const detail = (stderr || stdout || 'tidak ada output').trim().slice(0, 300);
-      throw new ProviderError('error', 'Output Claude CLI tidak bisa dibaca: ' + detail);
-    }
-
-    if (data.is_error || data.subtype !== 'success' || code !== 0) {
-      const msg = String(data.result || stderr || 'Claude CLI gagal.').trim();
-      if (QUOTA_PATTERN.test(msg)) {
-        throw new ProviderError('quota', 'Batas pemakaian Claude (langganan Pro) sudah tercapai untuk saat ini.');
-      }
-      throw new ProviderError('error', 'Claude CLI gagal: ' + msg.slice(0, 300));
-    }
-
-    const text = String(data.result || '').trim();
-    if (!text) {
-      throw new ProviderError('error', 'Claude CLI tidak mengembalikan teks.');
-    }
+    const dirs = ringkasan.ada ? [TMP_DIR, RINGKASAN_DIR] : [TMP_DIR];
+    const { data, text } = await callClaude(settings, prompt, dirs, TIMEOUT_MS);
 
     const u = data.usage || {};
     const input = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
